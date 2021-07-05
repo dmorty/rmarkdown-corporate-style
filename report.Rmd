@@ -1,0 +1,96 @@
+---
+title: "Demonstration page of R Markdown with Health corporate theming"
+author: "David Mortimer, HWD"
+date: "5 July 2021"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    self_contained: yes
+    css: corp-styles.css
+    highlight: pygments
+---
+
+<img src="logo.png" style="position:absolute;top:10px;right:10px;" width="230" />
+<div class="watermark">DRAFT</div>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE, eval = TRUE)
+```
+
+# Executive Summary
+
+R Markdown is a great way to turn your analysis into a portable, reproducible document - such as pdf or html. This document demonstrates how to incorporate Healths corporate style guide into Rmarkdown documents.
+
+```{r results = 'asis', message=F, warning=F}
+#library(openxlsx)
+library(tidyverse)
+library(stringr)
+library(scales)    # to show scale in percent
+library(ggseas)    # for seasonal adjustment on the fly
+library(forcats)   # for munging factors
+library(extrafont) # in case running on windows
+library(stringi)   # for generating pseudo lating lorem ipsum text
+library(here)
+library(lubridate)
+library(zoo)
+library(scales)
+
+source('corp-palette.R')
+#cat(stri_rand_lipsum(1))
+```
+
+
+# Purpose
+
+This is basically just a demo of how to deal with a few issues with making R Markdown files comply with corporate styling - fonts, logo, heading sizes and colours, etc.  
+
+The features include:
+
+* logo in the top right of the document, and modify the title's width to allow for it
+* heading styles and fonts in the html
+* fonts and corporate colours used in the graphics
+* document builds successfully even if the project is on a mapped network drive which usually causes problems with RStudio Server and Pandoc
+
+
+
+# Analysis
+
+## Data
+
+The data presented are service volumes of the top 5 MBS items claimed by GP's.
+
+## Findings
+
+### Raw data
+
+We see a very strong seasonal pattern, as well as step changes associated with step change increases in COVID related telehealth items and associated reduction in item 23 volumes.
+
+```{r, message=F, warning=F}
+
+MBS <- read_csv(here('./GP_MBS_items.csv')) %>% 
+  mutate(ITEM = as.factor(ITEM) 
+         , month = as.yearmon(MONTH, "%b-%y")
+         , TOTAL = TOTAL/1000000)
+
+
+MBS %>% ggplot(aes(x = month, y = TOTAL, colour = ITEM)) + geom_line() + labs(y = "Services (millions)")
+```
+
+
+### Seasonally adjusted - item 23 volumes
+
+We can perform a seasonal adjustment to removed the monthly fluctuation around the trend.
+
+
+```{r, message=F, warning=F}
+MBS %>% filter(ITEM==23) %>% ggplot(aes(x = month, y = TOTAL, colour = ITEM)) + geom_point() + labs(y = "Services (millions)") +
+  stat_stl(frequency = 12, s.window = 7 , geom = 'line' ) +
+  labs(y = "Seasonall adjusted services (millions)")
+
+```
+
+
+
